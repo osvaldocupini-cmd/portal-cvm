@@ -1,0 +1,81 @@
+import pandas as pd
+from fastapi import APIRouter, HTTPException
+
+from app.api.dependencies import cache
+from app.models.schemas import FinancialRecord, QueryRequest, QueryResponse
+
+router = APIRouter(prefix="/api/v1", tags=["data"])
+
+
+def apply_filters(df: pd.DataFrame, req: QueryRequest) -> pd.DataFrame:
+    """Apply user filters to the DataFrame."""
+    if df.empty:
+        return df
+
+    if req.companies:
+        df = df[df["DENOM_CIA"].isin(req.companies)]
+
+    if req.statement_types:
+        df = df[df["tipo_dem"].isin(req.statement_types)]
+
+    if req.consolidation:
+        df = df[df["con_ind"] == req.consolidation]
+
+    if req.cd_conta:
+        df = df[df["CD_CONTA"] == req.cd_conta]
+
+    if req.ds_conta:
+        df = df[df["DS_CONTA"].str.contains(req.ds_conta, case=False, na=False)]
+
+    return df
+
+
+def df_to_records(df: pd.DataFrame) -> list[FinancialRecord]:
+    """Convert DataFrame rows to Pydantic models."""
+    records = []
+    for _, row in df.iterrows():
+        records.append(
+            FinancialRecord(
+                denom_cia=str(row.get("DENOM_CIA", "")),
+                cnpj_cia=str(row.get("CNPJ_CIA", "")),
+                dt_refer=str(row.get("DT_REFER", "")),
+                dt_ini_exerc=str(row.get("DT_INI_EXERC", "")) if pd.notna(row.get("DT_INI_EXERC")) else None,
+                dt_fim_exerc=str(row.get("DT_FIM_EXERC", "")) if pd.notna(row.get("DT_FIM_EXERC")) else None,
+                ordem_exerc=str(row.get("ORDEM_EXERC", "")),
+                cd_conta=str(row.get("CD_CONTA", "")),
+                ds_conta=str(row.get("DS_CONTA", "")),
+                vl_conta=float(row["VL_CONTA"]) if pd.notna(row.get("VL_CONTA")) else None,
+                con_ind=str(row.get("con_ind", "")),
+                tipo_dem=str(row.get("tipo_dem", "")),
+            )
+        )
+    return records
+
+
+@router.post("/query", response_model=QueryResponse)
+async def query_data(req: QueryRequest):
+    """Query CVM financial data with filters and pagination."""
+    df = await cache.get_data(req.years)
+
+    if df.empty:
+        return QueryResponse(total_rows=0, page=req.page, page_size=req.page_size, data=[])
+
+    filtered = apply_filters(df, req)
+    total_rows = len(filtered)
+
+    # Pagination
+    start = (req.page - 1) * req.page_size
+    end = start + req.page_size
+
+    if start >= total_rows:
+        raise HTTPException(status_code=400, detail=f"Page {req.page} is out of range (total: {total_rows} rows)")
+
+    page_df = filtered.iloc[start:end]
+    records = df_to_records(page_df)
+
+    return QueryResponse(
+        total_rows=total_rows,
+        page=req.page,
+        page_size=req.page_size,
+        data=records,
+    )
