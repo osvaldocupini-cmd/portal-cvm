@@ -41,6 +41,20 @@ def apply_segment_filter(df: pd.DataFrame, req: QueryRequest) -> pd.DataFrame:
     return df[cnpj_digits.isin(cnpjs)]
 
 
+def apply_ticker_filter(df: pd.DataFrame, req: QueryRequest) -> pd.DataFrame:
+    """Filter rows by ticker presence using CNPJ lookup."""
+    if req.has_ticker is None or df.empty:
+        return df
+    cnpjs_with_ticker = b3_service.get_cnpjs_with_ticker()
+    if not cnpjs_with_ticker:
+        return df  # B3 data unavailable — skip filter
+    cnpj_digits = df["CNPJ_CIA"].str.replace(r"\D", "", regex=True)
+    if req.has_ticker:
+        return df[cnpj_digits.isin(cnpjs_with_ticker)]
+    else:
+        return df[~cnpj_digits.isin(cnpjs_with_ticker)]
+
+
 def df_to_records(df: pd.DataFrame) -> list[FinancialRecord]:
     """Convert DataFrame rows to Pydantic models."""
     records = []
@@ -75,6 +89,7 @@ async def query_data(req: QueryRequest):
 
     filtered = apply_filters(df, req)
     filtered = apply_segment_filter(filtered, req)
+    filtered = apply_ticker_filter(filtered, req)
     total_rows = len(filtered)
 
     # Pagination

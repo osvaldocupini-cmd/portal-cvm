@@ -428,6 +428,15 @@
                 </div>
                 <div class="dropdown-list" id="segment-dropdown"></div>
             </div>
+            <!-- TICKER filter -->
+            <div class="field-group">
+                <label for="sel-ticker">Ticker B3</label>
+                <select id="sel-ticker">
+                    <option value="">Todos</option>
+                    <option value="true">Com ticker</option>
+                    <option value="false">Sem ticker</option>
+                </select>
+            </div>
             <!-- COMPANIES multi-select with search -->
             <div class="field-group multi-picker" id="company-picker">
                 <label>Empresas</label>
@@ -885,6 +894,8 @@ function buildQueryBody(withPagination = true) {
     const body = { years: selectedYears };
     if (selectedCompanies.length > 0) body.companies = selectedCompanies;
     if (selectedSegments.length > 0) body.market_segments = selectedSegments;
+    const tickerVal = $('sel-ticker').value;
+    if (tickerVal !== '') body.has_ticker = tickerVal === 'true';
     if (selectedStatementTypes.length > 0) body.statement_types = selectedStatementTypes;
     const con = $('sel-consolidation').value;
     if (con) body.consolidation = con;
@@ -1012,6 +1023,7 @@ $('btn-clear').addEventListener('click', () => {
     renderCdContaChips();
     renderSegmentChips();
     $('sel-consolidation').innerHTML = '<option value="">-- Selecione o(s) ano(s) primeiro --</option>';
+    $('sel-ticker').value = '';
     $('input-company').value = '';
     $('input-conta').value = '';
     $('input-cd-conta').value = '';
@@ -1032,7 +1044,7 @@ $('btn-clear').addEventListener('click', () => {
 $('btn-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; queryData(); } });
 $('btn-next').addEventListener('click', () => { if (currentPage * PAGE_SIZE < totalRows) { currentPage++; queryData(); } });
 
-document.querySelectorAll('#input-conta, #sel-consolidation').forEach(el => {
+document.querySelectorAll('#input-conta, #sel-consolidation, #sel-ticker').forEach(el => {
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('btn-search').disabled) queryData(); });
 });
 

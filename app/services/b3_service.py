@@ -104,6 +104,13 @@ class B3Service:
             self._df = df
             logger.info("B3 data ready: %d companies", len(self._df))
 
+    def get_cnpjs_with_ticker(self) -> set[str]:
+        """Return set of CNPJ digit strings for companies that have a ticker."""
+        if self._df is None:
+            return set()
+        mask = self._df["ticker"].notna()
+        return set(self._df.index[mask].tolist())
+
     def get_cnpjs_for_segments(self, segments: list[str]) -> set[str]:
         """Return set of CNPJ digit strings for companies in the given segments."""
         if self._df is None:
