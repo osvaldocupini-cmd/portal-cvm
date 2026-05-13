@@ -22,7 +22,7 @@ def apply_filters(df: pd.DataFrame, req: QueryRequest) -> pd.DataFrame:
         df = df[df["con_ind"] == req.consolidation]
 
     if req.cd_conta:
-        df = df[df["CD_CONTA"] == req.cd_conta]
+        df = df[df["CD_CONTA"].isin(req.cd_conta)]
 
     if req.ds_conta:
         df = df[df["DS_CONTA"].str.contains(req.ds_conta, case=False, na=False)]

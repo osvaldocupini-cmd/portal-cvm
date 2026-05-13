@@ -398,11 +398,12 @@
                 </div>
                 <div class="dropdown-list" id="year-dropdown"></div>
             </div>
-            <div class="field-group">
-                <label for="sel-statement">Demonstracao</label>
-                <select id="sel-statement">
-                    <option value="">-- Selecione o(s) ano(s) primeiro --</option>
-                </select>
+            <div class="field-group multi-picker" id="statement-picker">
+                <label>Demonstracao</label>
+                <div class="chips-input" id="statement-chips-input">
+                    <input type="text" id="input-statement" placeholder="Selecione o(s) ano(s) primeiro..." readonly>
+                </div>
+                <div class="dropdown-list" id="statement-dropdown"></div>
             </div>
             <div class="field-group">
                 <label for="sel-consolidation">Consolidacao</label>
@@ -422,9 +423,11 @@
                 <label for="input-conta">Conta (DS_CONTA)</label>
                 <input type="text" id="input-conta" placeholder="Ex: Ativo Circulante">
             </div>
-            <div class="field-group">
-                <label for="input-cd-conta">Codigo da Conta</label>
-                <input type="text" id="input-cd-conta" placeholder="Ex: 1.01">
+            <div class="field-group multi-picker" id="cd-conta-picker">
+                <label>Codigo da Conta</label>
+                <div class="chips-input" id="cd-conta-chips-input">
+                    <input type="text" id="input-cd-conta" placeholder="Ex: 1.01 &rarr; Enter para adicionar">
+                </div>
             </div>
         </div>
         <div class="btn-row">
@@ -451,7 +454,7 @@
                 <tr>
                     <th>Empresa</th>
                     <th>Ticker</th>
-                    <th>Segmento B3</th>
+                    <th>Segmento Atual B3</th>
                     <th>CNPJ</th>
                     <th>Data Ref.</th>
                     <th>Exercicio</th>
@@ -498,6 +501,9 @@ let selectedYears = [];
 let selectedCompanies = [];
 let allYears = [];
 let allCompanySuggestions = [];
+let selectedStatementTypes = [];
+let allStatementTypes = [];
+let selectedCdContas = [];
 
 // --- Helpers ---
 function $(id) { return document.getElementById(id); }
@@ -603,7 +609,9 @@ let yearsChangeTimeout = null;
 async function onYearsChanged() {
     $('btn-search').disabled = selectedYears.length === 0;
     if (selectedYears.length === 0) {
-        $('sel-statement').innerHTML = '<option value="">-- Selecione o(s) ano(s) primeiro --</option>';
+        allStatementTypes = [];
+        selectedStatementTypes = [];
+        renderStatementChips();
         $('sel-consolidation').innerHTML = '<option value="">-- Selecione o(s) ano(s) primeiro --</option>';
         return;
     }
@@ -620,9 +628,10 @@ async function onYearsChanged() {
             const stData = await stRes.json();
             const conData = await conRes.json();
 
-            const selSt = $('sel-statement');
-            selSt.innerHTML = '<option value="">-- Todas --</option>';
-            stData.statement_types.forEach(t => { selSt.innerHTML += `<option value="${t}">${t}</option>`; });
+            allStatementTypes = stData.statement_types;
+            selectedStatementTypes = selectedStatementTypes.filter(t => allStatementTypes.includes(t));
+            renderStatementChips();
+            renderStatementDropdown();
 
             const selCon = $('sel-consolidation');
             selCon.innerHTML = '<option value="">-- Todos --</option>';
@@ -634,6 +643,79 @@ async function onYearsChanged() {
         }
     }, 500);
 }
+
+// =====================
+// STATEMENT TYPES MULTI-SELECT
+// =====================
+function renderStatementChips() {
+    renderChips('statement-chips-input', selectedStatementTypes, '', (type) => {
+        selectedStatementTypes = selectedStatementTypes.filter(t => t !== type);
+        renderStatementChips();
+        renderStatementDropdown();
+    });
+    const input = $('input-statement');
+    if (selectedStatementTypes.length > 0) {
+        input.placeholder = '';
+    } else {
+        input.placeholder = allStatementTypes.length > 0 ? 'Selecione...' : 'Selecione o(s) ano(s) primeiro...';
+    }
+}
+
+function renderStatementDropdown() {
+    const dd = $('statement-dropdown');
+    if (allStatementTypes.length === 0) { dd.classList.remove('open'); return; }
+    dd.innerHTML = allStatementTypes.map(t => {
+        const sel = selectedStatementTypes.includes(t);
+        return `<div class="dd-item${sel ? ' selected' : ''}" data-value="${t.replace(/"/g, '&quot;')}">
+            <span class="check">${sel ? '✓' : ''}</span> ${t}
+        </div>`;
+    }).join('');
+}
+
+$('statement-chips-input').addEventListener('click', (e) => {
+    if (e.target.closest('.chip button')) return;
+    if (allStatementTypes.length === 0) return;
+    $('statement-dropdown').classList.toggle('open');
+    $('year-dropdown').classList.remove('open');
+    $('company-dropdown').classList.remove('open');
+});
+
+$('statement-dropdown').addEventListener('click', (e) => {
+    const item = e.target.closest('.dd-item');
+    if (!item) return;
+    const type = item.dataset.value;
+    if (selectedStatementTypes.includes(type)) {
+        selectedStatementTypes = selectedStatementTypes.filter(t => t !== type);
+    } else {
+        selectedStatementTypes.push(type);
+    }
+    renderStatementChips();
+    renderStatementDropdown();
+});
+
+// =====================
+// CÓDIGO DA CONTA MULTI-ADD
+// =====================
+function renderCdContaChips() {
+    renderChips('cd-conta-chips-input', selectedCdContas, '', (code) => {
+        selectedCdContas = selectedCdContas.filter(c => c !== code);
+        renderCdContaChips();
+    });
+    const input = $('input-cd-conta');
+    input.placeholder = selectedCdContas.length > 0 ? 'Adicionar...' : 'Ex: 1.01 → Enter para adicionar';
+}
+
+$('input-cd-conta').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const val = $('input-cd-conta').value.trim().replace(/,$/, '');
+        if (val && !selectedCdContas.includes(val)) {
+            selectedCdContas.push(val);
+            renderCdContaChips();
+        }
+        $('input-cd-conta').value = '';
+    }
+});
 
 // =====================
 // COMPANIES MULTI-SELECT
@@ -717,6 +799,7 @@ $('company-dropdown').addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#year-picker')) $('year-dropdown').classList.remove('open');
     if (!e.target.closest('#company-picker')) $('company-dropdown').classList.remove('open');
+    if (!e.target.closest('#statement-picker')) $('statement-dropdown').classList.remove('open');
 });
 
 // =====================
@@ -726,14 +809,12 @@ function buildQueryBody(withPagination = true) {
     if (selectedYears.length === 0) return null;
     const body = { years: selectedYears };
     if (selectedCompanies.length > 0) body.companies = selectedCompanies;
-    const st = $('sel-statement').value;
-    if (st) body.statement_types = [st];
+    if (selectedStatementTypes.length > 0) body.statement_types = selectedStatementTypes;
     const con = $('sel-consolidation').value;
     if (con) body.consolidation = con;
     const conta = $('input-conta').value.trim();
     if (conta) body.ds_conta = conta;
-    const cdConta = $('input-cd-conta').value.trim();
-    if (cdConta) body.cd_conta = cdConta;
+    if (selectedCdContas.length > 0) body.cd_conta = selectedCdContas;
     if (withPagination) {
         body.page = currentPage;
         body.page_size = PAGE_SIZE;
@@ -844,16 +925,21 @@ $('btn-export').addEventListener('click', exportData);
 $('btn-clear').addEventListener('click', () => {
     selectedYears = [];
     selectedCompanies = [];
+    selectedStatementTypes = [];
+    allStatementTypes = [];
+    selectedCdContas = [];
     renderYearChips();
     renderYearDropdown();
     renderCompanyChips();
-    $('sel-statement').innerHTML = '<option value="">-- Selecione o(s) ano(s) primeiro --</option>';
+    renderStatementChips();
+    renderCdContaChips();
     $('sel-consolidation').innerHTML = '<option value="">-- Selecione o(s) ano(s) primeiro --</option>';
     $('input-company').value = '';
     $('input-conta').value = '';
     $('input-cd-conta').value = '';
     $('company-dropdown').classList.remove('open');
     $('year-dropdown').classList.remove('open');
+    $('statement-dropdown').classList.remove('open');
     $('table-wrapper').style.display = 'none';
     $('status-bar').style.display = 'none';
     $('empty-state').style.display = 'block';
@@ -867,7 +953,7 @@ $('btn-clear').addEventListener('click', () => {
 $('btn-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; queryData(); } });
 $('btn-next').addEventListener('click', () => { if (currentPage * PAGE_SIZE < totalRows) { currentPage++; queryData(); } });
 
-document.querySelectorAll('#input-conta, #input-cd-conta, #sel-statement, #sel-consolidation').forEach(el => {
+document.querySelectorAll('#input-conta, #sel-consolidation').forEach(el => {
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('btn-search').disabled) queryData(); });
 });
 
