@@ -24,6 +24,7 @@ class QueryRequest(BaseModel):
     consolidation: str | None = None
     cd_conta: list[str] | None = None
     ds_conta: str | None = None
+    market_segments: list[str] | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=100, ge=1, le=5000)
 
@@ -58,6 +59,7 @@ class ExportRequest(BaseModel):
     consolidation: str | None = None
     cd_conta: list[str] | None = None
     ds_conta: str | None = None
+    market_segments: list[str] | None = None
 
 
 class CacheRefreshResponse(BaseModel):

@@ -372,6 +372,15 @@
         .seg-bdr  { background: #f5f3ff; color: #7c3aed; }
         .seg-trad { background: #f1f5f9; color: #64748b; }
 
+        .dd-item-action {
+            background: #eff6ff;
+            color: var(--primary);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+            font-size: 0.82rem;
+        }
+        .dd-item-action:hover { background: #dbeafe; }
+
         @media (max-width: 768px) {
             .filters-grid { grid-template-columns: 1fr; }
             header { padding: 1rem; }
@@ -410,6 +419,14 @@
                 <select id="sel-consolidation">
                     <option value="">-- Selecione o(s) ano(s) primeiro --</option>
                 </select>
+            </div>
+            <!-- SEGMENT B3 multi-select -->
+            <div class="field-group multi-picker" id="segment-picker">
+                <label>Segmento Atual B3</label>
+                <div class="chips-input" id="segment-chips-input">
+                    <input type="text" id="input-segment" placeholder="Todos os segmentos..." readonly>
+                </div>
+                <div class="dropdown-list" id="segment-dropdown"></div>
             </div>
             <!-- COMPANIES multi-select with search -->
             <div class="field-group multi-picker" id="company-picker">
@@ -504,6 +521,10 @@ let allCompanySuggestions = [];
 let selectedStatementTypes = [];
 let allStatementTypes = [];
 let selectedCdContas = [];
+let selectedSegments = [];
+
+const B3_ALL_SEGMENTS = ['Novo Mercado', 'Nível 1', 'Nível 2', 'Bovespa Mais', 'Bovespa Mais Nível 2', 'BDR', 'Tradicional'];
+const B3_SPECIAL_SEGMENTS = ['Novo Mercado', 'Nível 1', 'Nível 2', 'Bovespa Mais', 'Bovespa Mais Nível 2', 'BDR'];
 
 // --- Helpers ---
 function $(id) { return document.getElementById(id); }
@@ -643,6 +664,59 @@ async function onYearsChanged() {
         }
     }, 500);
 }
+
+// =====================
+// SEGMENT B3 MULTI-SELECT
+// =====================
+function renderSegmentChips() {
+    renderChips('segment-chips-input', selectedSegments, '', (seg) => {
+        selectedSegments = selectedSegments.filter(s => s !== seg);
+        renderSegmentChips();
+        renderSegmentDropdown();
+    });
+    $('input-segment').placeholder = selectedSegments.length > 0 ? '' : 'Todos os segmentos...';
+}
+
+function renderSegmentDropdown() {
+    const dd = $('segment-dropdown');
+    const actionItem = `<div class="dd-item dd-item-action" id="btn-only-special">&#9733; Só com segmento (excluir Tradicional)</div>`;
+    const items = B3_ALL_SEGMENTS.map(seg => {
+        const sel = selectedSegments.includes(seg);
+        return `<div class="dd-item${sel ? ' selected' : ''}" data-seg="${seg.replace(/"/g,'&quot;')}">
+            <span class="check">${sel ? '✓' : ''}</span>
+            <span class="seg-badge ${segBadgeClass(seg)}">${seg}</span>
+        </div>`;
+    }).join('');
+    dd.innerHTML = actionItem + items;
+}
+
+$('segment-chips-input').addEventListener('click', (e) => {
+    if (e.target.closest('.chip button')) return;
+    $('segment-dropdown').classList.toggle('open');
+    $('year-dropdown').classList.remove('open');
+    $('company-dropdown').classList.remove('open');
+    $('statement-dropdown').classList.remove('open');
+    if ($('segment-dropdown').classList.contains('open')) renderSegmentDropdown();
+});
+
+$('segment-dropdown').addEventListener('click', (e) => {
+    if (e.target.closest('#btn-only-special')) {
+        selectedSegments = [...B3_SPECIAL_SEGMENTS];
+        renderSegmentChips();
+        renderSegmentDropdown();
+        return;
+    }
+    const item = e.target.closest('.dd-item[data-seg]');
+    if (!item) return;
+    const seg = item.dataset.seg;
+    if (selectedSegments.includes(seg)) {
+        selectedSegments = selectedSegments.filter(s => s !== seg);
+    } else {
+        selectedSegments.push(seg);
+    }
+    renderSegmentChips();
+    renderSegmentDropdown();
+});
 
 // =====================
 // STATEMENT TYPES MULTI-SELECT
@@ -800,6 +874,7 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('#year-picker')) $('year-dropdown').classList.remove('open');
     if (!e.target.closest('#company-picker')) $('company-dropdown').classList.remove('open');
     if (!e.target.closest('#statement-picker')) $('statement-dropdown').classList.remove('open');
+    if (!e.target.closest('#segment-picker')) $('segment-dropdown').classList.remove('open');
 });
 
 // =====================
@@ -809,6 +884,7 @@ function buildQueryBody(withPagination = true) {
     if (selectedYears.length === 0) return null;
     const body = { years: selectedYears };
     if (selectedCompanies.length > 0) body.companies = selectedCompanies;
+    if (selectedSegments.length > 0) body.market_segments = selectedSegments;
     if (selectedStatementTypes.length > 0) body.statement_types = selectedStatementTypes;
     const con = $('sel-consolidation').value;
     if (con) body.consolidation = con;
@@ -928,11 +1004,13 @@ $('btn-clear').addEventListener('click', () => {
     selectedStatementTypes = [];
     allStatementTypes = [];
     selectedCdContas = [];
+    selectedSegments = [];
     renderYearChips();
     renderYearDropdown();
     renderCompanyChips();
     renderStatementChips();
     renderCdContaChips();
+    renderSegmentChips();
     $('sel-consolidation').innerHTML = '<option value="">-- Selecione o(s) ano(s) primeiro --</option>';
     $('input-company').value = '';
     $('input-conta').value = '';
@@ -940,6 +1018,7 @@ $('btn-clear').addEventListener('click', () => {
     $('company-dropdown').classList.remove('open');
     $('year-dropdown').classList.remove('open');
     $('statement-dropdown').classList.remove('open');
+    $('segment-dropdown').classList.remove('open');
     $('table-wrapper').style.display = 'none';
     $('status-bar').style.display = 'none';
     $('empty-state').style.display = 'block';

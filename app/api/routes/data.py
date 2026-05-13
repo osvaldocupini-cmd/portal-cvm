@@ -30,6 +30,17 @@ def apply_filters(df: pd.DataFrame, req: QueryRequest) -> pd.DataFrame:
     return df
 
 
+def apply_segment_filter(df: pd.DataFrame, req: QueryRequest) -> pd.DataFrame:
+    """Filter rows by B3 governance segment using a CNPJ lookup."""
+    if not req.market_segments or df.empty:
+        return df
+    cnpjs = b3_service.get_cnpjs_for_segments(req.market_segments)
+    if not cnpjs:
+        return df  # B3 data unavailable — skip filter rather than return empty
+    cnpj_digits = df["CNPJ_CIA"].str.replace(r"\D", "", regex=True)
+    return df[cnpj_digits.isin(cnpjs)]
+
+
 def df_to_records(df: pd.DataFrame) -> list[FinancialRecord]:
     """Convert DataFrame rows to Pydantic models."""
     records = []
@@ -63,6 +74,7 @@ async def query_data(req: QueryRequest):
         return QueryResponse(total_rows=0, page=req.page, page_size=req.page_size, data=[])
 
     filtered = apply_filters(df, req)
+    filtered = apply_segment_filter(filtered, req)
     total_rows = len(filtered)
 
     # Pagination

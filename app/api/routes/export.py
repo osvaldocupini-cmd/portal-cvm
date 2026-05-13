@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 
 from app.api.dependencies import cache
-from app.api.routes.data import apply_filters
+from app.api.routes.data import apply_filters, apply_segment_filter
 from app.models.schemas import ExportRequest, QueryRequest
 from app.utils.excel import dataframe_to_excel_bytes
 
@@ -35,8 +35,10 @@ async def export_data(req: ExportRequest):
         consolidation=req.consolidation,
         cd_conta=req.cd_conta,
         ds_conta=req.ds_conta,
+        market_segments=req.market_segments,
     )
     filtered = apply_filters(df, query_req)
+    filtered = apply_segment_filter(filtered, query_req)
 
     # Select only relevant columns that exist
     cols = [c for c in EXPORT_COLUMNS if c in filtered.columns]
