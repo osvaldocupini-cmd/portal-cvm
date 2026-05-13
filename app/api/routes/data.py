@@ -55,6 +55,17 @@ def apply_ticker_filter(df: pd.DataFrame, req: QueryRequest) -> pd.DataFrame:
         return df[~cnpj_digits.isin(cnpjs_with_ticker)]
 
 
+async def apply_base_year_filter(df: pd.DataFrame, req: QueryRequest) -> pd.DataFrame:
+    """Keep only companies (by CNPJ) that filed a DFP in the base year."""
+    if req.base_year is None or df.empty:
+        return df
+    base_df = await cache.get_year_data(req.base_year)
+    if base_df.empty:
+        return df  # base year data unavailable — skip filter
+    base_cnpjs = set(base_df["CNPJ_CIA"].unique())
+    return df[df["CNPJ_CIA"].isin(base_cnpjs)]
+
+
 def df_to_records(df: pd.DataFrame) -> list[FinancialRecord]:
     """Convert DataFrame rows to Pydantic models."""
     records = []
@@ -90,6 +101,7 @@ async def query_data(req: QueryRequest):
     filtered = apply_filters(df, req)
     filtered = apply_segment_filter(filtered, req)
     filtered = apply_ticker_filter(filtered, req)
+    filtered = await apply_base_year_filter(filtered, req)
     total_rows = len(filtered)
 
     # Pagination

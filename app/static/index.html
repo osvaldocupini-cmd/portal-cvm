@@ -437,6 +437,13 @@
                     <option value="false">Sem ticker</option>
                 </select>
             </div>
+            <!-- BASE YEAR filter -->
+            <div class="field-group">
+                <label for="sel-base-year" title="Restringe a amostra às empresas que entregaram DFP neste ano — útil para análises longitudinais com universo fixo">Universo (ano base) &#9432;</label>
+                <select id="sel-base-year">
+                    <option value="">Todos os anos selecionados</option>
+                </select>
+            </div>
             <!-- COMPANIES multi-select with search -->
             <div class="field-group multi-picker" id="company-picker">
                 <label>Empresas</label>
@@ -588,6 +595,14 @@ async function loadYears() {
         const data = await res.json();
         allYears = data.years.reverse();
         renderYearDropdown();
+        // Populate base-year selector
+        const selBy = $('sel-base-year');
+        allYears.forEach(y => {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            selBy.appendChild(opt);
+        });
     } catch (e) {
         showToast('Erro ao carregar anos: ' + e.message, 'error');
     }
@@ -896,6 +911,8 @@ function buildQueryBody(withPagination = true) {
     if (selectedSegments.length > 0) body.market_segments = selectedSegments;
     const tickerVal = $('sel-ticker').value;
     if (tickerVal !== '') body.has_ticker = tickerVal === 'true';
+    const baseYear = $('sel-base-year').value;
+    if (baseYear !== '') body.base_year = parseInt(baseYear);
     if (selectedStatementTypes.length > 0) body.statement_types = selectedStatementTypes;
     const con = $('sel-consolidation').value;
     if (con) body.consolidation = con;
@@ -1024,6 +1041,7 @@ $('btn-clear').addEventListener('click', () => {
     renderSegmentChips();
     $('sel-consolidation').innerHTML = '<option value="">-- Selecione o(s) ano(s) primeiro --</option>';
     $('sel-ticker').value = '';
+    $('sel-base-year').value = '';
     $('input-company').value = '';
     $('input-conta').value = '';
     $('input-cd-conta').value = '';
@@ -1044,7 +1062,7 @@ $('btn-clear').addEventListener('click', () => {
 $('btn-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; queryData(); } });
 $('btn-next').addEventListener('click', () => { if (currentPage * PAGE_SIZE < totalRows) { currentPage++; queryData(); } });
 
-document.querySelectorAll('#input-conta, #sel-consolidation, #sel-ticker').forEach(el => {
+document.querySelectorAll('#input-conta, #sel-consolidation, #sel-ticker, #sel-base-year').forEach(el => {
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('btn-search').disabled) queryData(); });
 });
 

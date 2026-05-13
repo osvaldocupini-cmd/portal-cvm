@@ -26,6 +26,7 @@ class QueryRequest(BaseModel):
     ds_conta: str | None = None
     market_segments: list[str] | None = None
     has_ticker: bool | None = None
+    base_year: int | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=100, ge=1, le=5000)
 
@@ -62,6 +63,7 @@ class ExportRequest(BaseModel):
     ds_conta: str | None = None
     market_segments: list[str] | None = None
     has_ticker: bool | None = None
+    base_year: int | None = None
 
 
 class CacheRefreshResponse(BaseModel):
