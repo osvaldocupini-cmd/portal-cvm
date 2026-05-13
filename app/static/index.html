@@ -348,6 +348,30 @@
         .toast.success { background: var(--success); }
         .toast.error { background: var(--danger); }
 
+        .ticker-code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.82rem;
+            font-weight: 700;
+            background: #f1f5f9;
+            padding: 0.1rem 0.45rem;
+            border-radius: 4px;
+            letter-spacing: 0.03em;
+        }
+
+        .seg-badge {
+            display: inline-block;
+            padding: 0.15rem 0.55rem;
+            border-radius: 99px;
+            font-size: 0.73rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .seg-nm   { background: #dcfce7; color: #166534; }
+        .seg-n1n2 { background: #dbeafe; color: #1e40af; }
+        .seg-mb   { background: #fff7ed; color: #c2410c; }
+        .seg-bdr  { background: #f5f3ff; color: #7c3aed; }
+        .seg-trad { background: #f1f5f9; color: #64748b; }
+
         @media (max-width: 768px) {
             .filters-grid { grid-template-columns: 1fr; }
             header { padding: 1rem; }
@@ -426,6 +450,8 @@
             <thead>
                 <tr>
                     <th>Empresa</th>
+                    <th>Ticker</th>
+                    <th>Segmento B3</th>
                     <th>CNPJ</th>
                     <th>Data Ref.</th>
                     <th>Exercicio</th>
@@ -451,6 +477,16 @@
 
 <script>
 const API = window.location.origin;
+
+function segBadgeClass(seg) {
+    if (!seg) return 'seg-trad';
+    const s = seg.toLowerCase();
+    if (s.includes('novo mercado')) return 'seg-nm';
+    if (s.includes('nível 1') || s.includes('nivel 1') || s.includes('nível 2') || s.includes('nivel 2')) return 'seg-n1n2';
+    if (s.includes('bovespa mais')) return 'seg-mb';
+    if (s.includes('bdr')) return 'seg-bdr';
+    return 'seg-trad';
+}
 
 let currentPage = 1;
 const PAGE_SIZE = 100;
@@ -745,6 +781,8 @@ function renderTable(records) {
     tbody.innerHTML = records.map(r => `
         <tr>
             <td>${r.denom_cia}</td>
+            <td>${r.ticker ? `<code class="ticker-code">${r.ticker}</code>` : '&mdash;'}</td>
+            <td>${r.market_segment ? `<span class="seg-badge ${segBadgeClass(r.market_segment)}">${r.market_segment}</span>` : '&mdash;'}</td>
             <td>${r.cnpj_cia}</td>
             <td>${r.dt_refer}</td>
             <td>${r.ordem_exerc}</td>

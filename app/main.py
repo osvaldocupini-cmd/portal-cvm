@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.dependencies import cache
+from app.api.dependencies import b3_service, cache
 from app.api.routes import data, export, metadata
 from app.config import settings
 from app.models.schemas import CacheRefreshResponse
@@ -29,6 +29,10 @@ async def lifespan(app: FastAPI):
         await cache.preload([current_year])
     except Exception as exc:
         logger.warning("Could not preload year %d on startup: %s", current_year, exc)
+    try:
+        await b3_service.load()
+    except Exception as exc:
+        logger.warning("Could not load B3 data on startup: %s", exc)
     yield
 
 

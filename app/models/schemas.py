@@ -31,6 +31,8 @@ class QueryRequest(BaseModel):
 class FinancialRecord(BaseModel):
     denom_cia: str
     cnpj_cia: str
+    ticker: str | None = None
+    market_segment: str | None = None
     dt_refer: str
     dt_ini_exerc: str | None
     dt_fim_exerc: str | None

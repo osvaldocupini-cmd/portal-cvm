@@ -1,7 +1,7 @@
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from app.api.dependencies import cache
+from app.api.dependencies import b3_service, cache
 from app.models.schemas import FinancialRecord, QueryRequest, QueryResponse
 
 router = APIRouter(prefix="/api/v1", tags=["data"])
@@ -44,6 +44,8 @@ def df_to_records(df: pd.DataFrame) -> list[FinancialRecord]:
                 ordem_exerc=str(row.get("ORDEM_EXERC", "")),
                 cd_conta=str(row.get("CD_CONTA", "")),
                 ds_conta=str(row.get("DS_CONTA", "")),
+                ticker=str(row["ticker"]) if pd.notna(row.get("ticker")) else None,
+                market_segment=str(row["market_segment"]) if pd.notna(row.get("market_segment")) else None,
                 vl_conta=float(row["VL_CONTA"]) if pd.notna(row.get("VL_CONTA")) else None,
                 con_ind=str(row.get("con_ind", "")),
                 tipo_dem=str(row.get("tipo_dem", "")),
@@ -70,7 +72,7 @@ async def query_data(req: QueryRequest):
     if start >= total_rows:
         raise HTTPException(status_code=400, detail=f"Page {req.page} is out of range (total: {total_rows} rows)")
 
-    page_df = filtered.iloc[start:end]
+    page_df = await b3_service.enrich_dataframe(filtered.iloc[start:end])
     records = df_to_records(page_df)
 
     return QueryResponse(
