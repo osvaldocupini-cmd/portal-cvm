@@ -23,10 +23,12 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Preload the most recent year on startup
     current_year = settings.MAX_YEAR
     logger.info("Preloading year %d on startup...", current_year)
-    await cache.preload([current_year])
+    try:
+        await cache.preload([current_year])
+    except Exception as exc:
+        logger.warning("Could not preload year %d on startup: %s", current_year, exc)
     yield
 
 

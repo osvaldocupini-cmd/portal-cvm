@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     MIN_YEAR: int = 2010
     MAX_YEAR: int = datetime.now().year - 1
     CACHE_TTL_HOURS: int = 24
+    PORT: int = 8000
 
     model_config = {"env_prefix": "CVM_"}
 
