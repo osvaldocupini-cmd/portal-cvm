@@ -7,8 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.dependencies import b3_service, cache
-from app.api.routes import data, export, metadata
+from app.api.dependencies import b3_service, cache, reference_data
+from app.api.routes import data, export, metadata, wacc
 from app.config import settings
 from app.models.schemas import CacheRefreshResponse
 
@@ -33,6 +33,10 @@ async def lifespan(app: FastAPI):
         await b3_service.load()
     except Exception as exc:
         logger.warning("Could not load B3 data on startup: %s", exc)
+    try:
+        reference_data.load()
+    except Exception as exc:
+        logger.warning("Could not load reference data on startup: %s", exc)
     yield
 
 
@@ -55,6 +59,7 @@ app.add_middleware(
 app.include_router(metadata.router)
 app.include_router(data.router)
 app.include_router(export.router)
+app.include_router(wacc.router)
 
 
 @app.post("/api/v1/cache/refresh", response_model=CacheRefreshResponse, tags=["admin"])
